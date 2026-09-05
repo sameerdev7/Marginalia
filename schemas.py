@@ -11,7 +11,12 @@ class UserResponse(UserBase):
         model_config = ConfigDict(from_attributes=True)
         
         id: int
-
+        
+class UserUpdate(BaseModel):
+        username: str | None = Field(default=None, min_length=1, max_length=100)
+        email: EmailStr | None = Field(default=None, max_length=100)
+        
+        
 class BookBase(BaseModel):
         title: str = Field(min_length=1, max_length=150)
         author: str = Field(min_length=1, max_length=150)
@@ -29,3 +34,13 @@ class BookResponse(BookBase):
         
         id: int      
         user_id: int    
+        
+        
+class BookUpdate(BaseModel):
+        title: str | None = Field(default=None, min_length=1, max_length=150)
+        author: str | None = Field(default=None, min_length=1, max_length=150)
+        genre: str | None = Field(default=None, min_length=1, max_length=100)
+        year: int | None = None
+        rating: float | None = Field(default=None, ge=1, le=5)
+        pages: int | None = Field(default=None, gt=0)
+        description: str | None = Field(default=None,min_length=1, max_length=1000)  
