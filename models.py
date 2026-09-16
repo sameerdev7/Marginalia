@@ -29,9 +29,8 @@ class User(Base):
         nullable=False,
     )
 
-    books: Mapped[list[Book]] = relationship(
-        back_populates="user"
-    )
+    books: Mapped[list[Book]] = relationship(back_populates="user")
+    password_hash: Mapped[str] = mapped_column(String(200), nullable=False)
 
 
 class Book(Base):
@@ -84,6 +83,5 @@ class Book(Base):
         index=True,
     )
 
-    user: Mapped[User] = relationship(
-        back_populates="books"
-    )
+    user: Mapped[User] = relationship(back_populates="books")
+

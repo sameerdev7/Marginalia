@@ -1,20 +1,24 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession, create_async_engine
+from sqlalchemy.orm import DeclarativeBase
 
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./marginalia.db"
+SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///./marginalia.db"
 
-engine = create_engine(
+engine = create_async_engine(
     SQLALCHEMY_DATABASE_URL, 
     connect_args={"check_same_thread": False},
 )
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+SessionLocal = async_sessionmaker(
+    engine, 
+    class_= AsyncSession, 
+    expire_on_commit=False, 
+)
 
 
 class Base(DeclarativeBase):
     pass 
 
-def get_db():
-    with SessionLocal() as db:
+async def get_db():
+    async with SessionLocal() as db:
         yield db 
