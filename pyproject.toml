@@ -1,10 +1,17 @@
 [project]
-name = "marginalia"
+name = "athenaeum"
 version = "0.1.0"
 description = "A social network for readers."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "aiosqlite>=0.20",
+    "alembic>=1.20.0",
     "fastapi[standard]>=0.141.1",
+    "httpx",
+    "livekit-api>=1.2.1",
+    "pwdlib[argon2]>=0.2",
+    "pydantic-settings>=2.6",
+    "pyjwt>=2.9",
     "sqlalchemy>=2.0.52",
 ]

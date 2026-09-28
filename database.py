@@ -2,7 +2,7 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, AsyncSession, create_asyn
 from sqlalchemy.orm import DeclarativeBase
 
 
-SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///./marginalia.db"
+SQLALCHEMY_DATABASE_URL = "sqlite+aiosqlite:///./athenaeum.db"
 
 engine = create_async_engine(
     SQLALCHEMY_DATABASE_URL, 

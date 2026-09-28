@@ -1,11 +1,16 @@
 from datetime import UTC, datetime, timedelta
+from typing import Annotated
 
 import jwt
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from pwdlib import PasswordHash
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-
+import models
 from config import settings
+from database import get_db
 
 password_hash = PasswordHash.recommended()
 
@@ -54,3 +59,35 @@ def verify_access_token(token: str) -> str | None:
 
     else:
         return payload.get("sub")
+
+
+async def get_current_user(
+    token: Annotated[str, Depends(oauth2_scheme)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> models.User:
+    """Resolve the bearer token on the request into the authenticated User row.
+
+    Shared by every router that needs to know who's calling — the single
+    place that turns a raw JWT into a `models.User` or a 401.
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid or expired token",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    user_id = verify_access_token(token)
+    if user_id is None:
+        raise credentials_exception
+
+    try:
+        user_id_int = int(user_id)
+    except (TypeError, ValueError):
+        raise credentials_exception
+
+    result = await db.execute(select(models.User).where(models.User.id == user_id_int))
+    user = result.scalars().first()
+    if not user:
+        raise credentials_exception
+
+    return user

@@ -8,3 +8,18 @@ wheels/
 
 # Virtual environments
 .venv
+
+# secrets — never committed
+.env
+
+# local sqlite db, regenerated via alembic + seed_books.py
+*.db
+
+# Claude Code session runtime state, not project config
+.claude/scheduled_tasks.lock
+
+# local notes/guides, not meant to be pushed
+docs/
+
+# frontend — its own repo, nested here on disk, not tracked by this one
+marginalia-web/
