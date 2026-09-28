@@ -845,26 +845,42 @@ def _ratings_for(rng: random.Random, count: int) -> list[float]:
     return [float(rng.choices(values, weights=probs, k=1)[0]) for _ in range(count)]
 
 
+def _avatar_url(username: str) -> str:
+    # DiceBear's hosted API, no key needed: an illustrated portrait seeded
+    # by username, so it's the same picture on every run rather than a new
+    # random face each time. Background tinted to match --parchment so it
+    # doesn't sit inside the app as a plain white square.
+    return f"https://api.dicebear.com/9.x/notionists/svg?seed={username}&backgroundColor=f1e9d8"
+
+
 async def seed_readers(db) -> dict[str, models.User]:
     """The ten fake accounts, keyed by username for the rest of the script."""
     result = await db.execute(select(models.User))
     existing = {u.username.lower(): u for u in result.scalars().all()}
 
-    created = 0
+    created = given_avatar = 0
     for username, email in READERS:
         if username in existing:
+            # Backfills anyone created before avatars existed here, so a
+            # re-run repairs old rows instead of only handling new ones.
+            user = existing[username]
+            if not user.avatar_url:
+                user.avatar_url = _avatar_url(username)
+                given_avatar += 1
             continue
         user = models.User(
             username=username,
             email=email,
             password_hash=hash_password(DEMO_PASSWORD),
+            avatar_url=_avatar_url(username),
         )
         db.add(user)
         existing[username] = user
         created += 1
 
     await db.commit()
-    print(f"  {created} created, {len(READERS) - created} already present")
+    print(f"  {created} created, {given_avatar} given an avatar, "
+          f"{len(READERS) - created - given_avatar} already present")
     return existing
 
 
