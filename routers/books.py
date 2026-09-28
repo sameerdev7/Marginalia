@@ -10,7 +10,8 @@ import models
 from auth import get_current_user
 from database import get_db
 from permissions import check_ownership
-from schemas import BookResponse, BookCreate, BookUpdate, ExternalBookResult
+from recommendations import similar_books
+from schemas import BookResponse, BookCreate, BookUpdate, ExternalBookResult, SimilarBookResponse
 
 router = APIRouter()
 
@@ -52,8 +53,29 @@ async def get_book(book_id: int, db: Annotated[AsyncSession, Depends(get_db)]):
     
     if book:
         return book
-        
+
     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Book not found.")
+
+
+@router.get("/{book_id}/similar", response_model=list[SimilarBookResponse])
+async def get_similar_books(
+    book_id: int,
+    db: Annotated[AsyncSession, Depends(get_db)],
+    limit: int = 6,
+):
+    result = await db.execute(select(models.Book).where(models.Book.id == book_id))
+    book = result.scalars().first()
+
+    if not book:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Book not found.")
+
+    catalogue = await db.execute(select(models.Book).options(selectinload(models.Book.owner)))
+    ranked = similar_books(book, catalogue.scalars().all(), limit=limit)
+
+    return [
+        SimilarBookResponse(**BookResponse.model_validate(match).model_dump(), similarity=round(score, 3))
+        for match, score in ranked
+    ]
 
 @router.post("", response_model=BookResponse, status_code=status.HTTP_201_CREATED)
 async def create_book(

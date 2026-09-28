@@ -13,5 +13,6 @@ dependencies = [
     "pwdlib[argon2]>=0.2",
     "pydantic-settings>=2.6",
     "pyjwt>=2.9",
+    "scikit-learn>=1.9.1",
     "sqlalchemy>=2.0.52",
 ]

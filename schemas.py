@@ -72,6 +72,10 @@ class BookResponse(BookBase):
     owner: UserPublic
 
 
+class SimilarBookResponse(BookResponse):
+    similarity: float = Field(ge=0, le=1)
+
+
 class ExternalBookResult(BaseModel):
     title: str
     author: str | None = None
