@@ -1,14 +1,16 @@
 from contextlib import asynccontextmanager
 from typing import Annotated
 
-from fastapi import FastAPI, HTTPException, status, Depends 
+from fastapi import FastAPI, HTTPException, status, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 
-from sqlalchemy import select 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 import models
+from config import settings
 from database import engine, get_db
 from schemas import BookResponse
 
@@ -23,6 +25,18 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+# The frontend is a separate origin in every deployed setup (and in local
+# dev, :5173 vs :8000) — without this, the browser blocks every request
+# before it reaches a route. Origins come from settings.cors_origins so
+# production points at the real deployed frontend without a code change.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in settings.cors_origins.split(",")],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(books.router, prefix="/api/books", tags=["books"])
 app.include_router(follows.router, prefix="/api/users", tags=["follows"])
@@ -31,6 +45,12 @@ app.include_router(comments.router, prefix="/api/comments", tags=["comments"])
 app.include_router(lists.router, prefix="/api/lists", tags=["lists"])
 app.include_router(groups.router, prefix="/api/groups", tags=["groups"])
 app.include_router(posts.router, prefix="/api/posts", tags=["posts"])
+
+
+@app.get("/health", include_in_schema=False)
+async def health():
+    return {"status": "ok"}
+
 
 @app.get("/", response_class=HTMLResponse, include_in_schema=False)
 @app.get("/posts", response_class=HTMLResponse, include_in_schema=False)
