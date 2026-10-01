@@ -1,3 +1,4 @@
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -10,6 +11,7 @@ from auth import get_current_user
 from database import get_db
 from permissions import check_ownership
 from schemas import (
+    FriendsPopularItem,
     ReadingLogResponse,
     ReadingLogCreate,
     ReadingLogUpdate,
@@ -38,6 +40,51 @@ async def get_feed(
         .offset(offset),
     )
     return result.scalars().all()
+
+
+# Also before /{log_id}.
+@router.get("/friends/popular", response_model=list[FriendsPopularItem])
+async def popular_among_friends(
+    current_user: Annotated[models.User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+    days: int = 90,
+    limit: int = 12,
+):
+    """Books the people you follow logged recently, most-logged first.
+
+    Counts distinct readers per book (someone logging a book twice is still one
+    reader). Ties break toward the book logged most recently.
+    """
+    since = datetime.now(UTC) - timedelta(days=min(max(days, 1), 3650))
+    result = await db.execute(
+        select(models.ReadingLog)
+        .join(models.Follow, models.Follow.followed_id == models.ReadingLog.user_id)
+        .where(
+            models.Follow.follower_id == current_user.id,
+            models.ReadingLog.created_at >= since,
+        )
+        .options(
+            selectinload(models.ReadingLog.user),
+            # BookResponse nests the owner, so it must be loaded too.
+            selectinload(models.ReadingLog.book).selectinload(models.Book.owner),
+        )
+        .order_by(models.ReadingLog.created_at.desc())
+    )
+
+    books: dict[int, dict] = {}
+    for log in result.scalars():
+        entry = books.setdefault(
+            log.book_id, {"book": log.book, "friends": {}, "latest": log.created_at}
+        )
+        entry["friends"].setdefault(log.user_id, log.user)
+
+    ranked = sorted(
+        books.values(), key=lambda e: (len(e["friends"]), e["latest"]), reverse=True
+    )[: min(limit, 50)]
+    return [
+        {"book": e["book"], "readers": len(e["friends"]), "friends": list(e["friends"].values())[:4]}
+        for e in ranked
+    ]
 
 
 @router.get("", response_model=list[ReadingLogResponse])

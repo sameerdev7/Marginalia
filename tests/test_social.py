@@ -137,3 +137,30 @@ async def test_join_post_and_owner_cannot_leave(client, alice, bob):
 
     assert (await client.delete(f"/api/groups/{group['id']}/members/me", headers=alice)).status_code == 400
     assert (await client.delete(f"/api/groups/{group['id']}/members/me", headers=bob)).status_code == 200
+
+
+async def test_popular_among_friends(client, alice, bob):
+    """Only followed readers count; a book logged twice by one friend is one reader."""
+    from tests.conftest import auth_headers
+
+    carol = await auth_headers(client, "carol")
+    book = await create_book(client, bob)
+
+    for who in (bob, carol):
+        await client.post("/api/logs", json={"book_id": book["id"], "status": "read"}, headers=who)
+    await client.post("/api/logs", json={"book_id": book["id"], "status": "read"}, headers=bob)
+
+    # Alice follows nobody yet: nothing to show.
+    assert (await client.get("/api/logs/friends/popular", headers=alice)).json() == []
+
+    for who in (bob, carol):
+        who_id = await _user_id(client, who)
+        await client.post(f"/api/users/{who_id}/follow", headers=alice)
+
+    items = (await client.get("/api/logs/friends/popular", headers=alice)).json()
+    assert len(items) == 1
+    assert items[0]["book"]["id"] == book["id"]
+    assert items[0]["readers"] == 2
+    assert {f["username"] for f in items[0]["friends"]} == {"bob", "carol"}
+
+    assert (await client.get("/api/logs/friends/popular")).status_code == 401

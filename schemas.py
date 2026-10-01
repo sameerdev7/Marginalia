@@ -128,6 +128,14 @@ class ReadingLogResponse(ReadingLogBase):
     created_at: UTCDatetime
 
 
+class FriendsPopularItem(BaseModel):
+    """A book that people you follow have been logging, with who and how many."""
+
+    book: BookResponse
+    readers: int
+    friends: list[UserPublic]
+
+
 class ReadingLogUpdate(BaseModel):
     status: ReadingStatus | None = None
     rating: float | None = Field(default=None, ge=1, le=5)
