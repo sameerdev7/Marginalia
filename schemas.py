@@ -27,6 +27,15 @@ class UserCreate(UserBase):
     password: str = Field(min_length=8, max_length=100)
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(min_length=10, max_length=200)
+    password: str = Field(min_length=8, max_length=100)
+
+
 class UserPublic(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -282,3 +291,56 @@ class LiveKitTokenResponse(BaseModel):
     url: str
     room_name: str
 
+
+
+# --- Journal ---
+
+
+class JournalBookRef(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    author: str
+    cover_url: str | None = None
+
+
+class JournalCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=150)
+    subtitle: str | None = Field(default=None, max_length=300)
+    body: str = Field(min_length=1, max_length=50000)
+    cover_url: str | None = Field(default=None, max_length=500)
+    book_id: int | None = None
+    published: bool = False
+
+
+class JournalUpdate(BaseModel):
+    title: str | None = Field(default=None, min_length=1, max_length=150)
+    subtitle: str | None = Field(default=None, max_length=300)
+    body: str | None = Field(default=None, min_length=1, max_length=50000)
+    cover_url: str | None = Field(default=None, max_length=500)
+    book_id: int | None = None
+    published: bool | None = None
+
+
+class JournalSummary(BaseModel):
+    """List-view shape: everything but the body."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    subtitle: str | None = None
+    excerpt: str
+    cover_url: str | None = None
+    published: bool
+    reading_minutes: int
+    created_at: UTCDatetime
+    updated_at: UTCDatetime
+    published_at: UTCDatetime | None = None
+    author: UserPublic
+    book: JournalBookRef | None = None
+
+
+class JournalResponse(JournalSummary):
+    body: str

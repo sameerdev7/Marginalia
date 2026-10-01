@@ -1,9 +1,11 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Annotated
 
 from fastapi import FastAPI, HTTPException, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,7 +16,7 @@ from config import settings
 from database import engine, get_db
 from schemas import BookResponse
 
-from routers import users, books, follows, reading_logs, comments, lists, groups, posts
+from routers import users, books, follows, reading_logs, comments, lists, groups, posts, journal
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -37,6 +39,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Uploaded avatars. Under /api so the dev proxy and any /api-routing reverse
+# proxy serve them with no extra config.
+Path(settings.upload_dir).mkdir(parents=True, exist_ok=True)
+app.mount("/api/uploads", StaticFiles(directory=settings.upload_dir), name="uploads")
+
 app.include_router(users.router, prefix="/api/users", tags=["users"])
 app.include_router(books.router, prefix="/api/books", tags=["books"])
 app.include_router(follows.router, prefix="/api/users", tags=["follows"])
@@ -45,6 +52,7 @@ app.include_router(comments.router, prefix="/api/comments", tags=["comments"])
 app.include_router(lists.router, prefix="/api/lists", tags=["lists"])
 app.include_router(groups.router, prefix="/api/groups", tags=["groups"])
 app.include_router(posts.router, prefix="/api/posts", tags=["posts"])
+app.include_router(journal.router, prefix="/api/journal", tags=["journal"])
 
 
 @app.get("/health", include_in_schema=False)

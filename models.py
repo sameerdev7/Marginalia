@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import date, datetime, UTC
 
 from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text, Float, UniqueConstraint
@@ -432,3 +433,106 @@ class AudioSession(Base):
     )
     ended_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
+
+
+class PasswordResetToken(Base):
+    """A single-use password-reset grant.
+
+    Only the SHA-256 of the emailed token is stored, so a leaked database
+    can't be used to take over accounts.
+    """
+
+    __tablename__ = "password_reset_tokens"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=False,
+        index=True,
+    )
+
+    token_hash: Mapped[str] = mapped_column(
+        String(64),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+    used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+    )
+
+
+# --- Journal: long-form writing ---
+
+
+def _plain(markdown: str) -> str:
+    """Rough markdown -> text, good enough for excerpts and word counts."""
+    text = re.sub(r"```.*?```", " ", markdown, flags=re.S)
+    text = re.sub(r"!?\[([^\]]*)\]\([^)]*\)", r"\1", text)
+    text = re.sub(r"^\s{0,3}(#{1,6}|>|[-*+]|\d+\.)\s+", "", text, flags=re.M)
+    return re.sub(r"[*_`~]", "", text)
+
+
+class JournalEntry(Base):
+    """A blog-style essay. Body is markdown; drafts are visible only to the author."""
+
+    __tablename__ = "journal_entries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=False,
+        index=True,
+    )
+
+    # Optional: the book this piece is about.
+    book_id: Mapped[int | None] = mapped_column(
+        ForeignKey("books.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
+    title: Mapped[str] = mapped_column(String(150), nullable=False)
+    subtitle: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    cover_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    published: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, index=True)
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=lambda: datetime.now(UTC)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+    # Set the first time the entry is published; drives ordering and the byline date.
+    published_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+
+    author: Mapped[User] = relationship(lazy="selectin")
+    book: Mapped[Book | None] = relationship(lazy="selectin")
+
+    @property
+    def reading_minutes(self) -> int:
+        return max(1, round(len(_plain(self.body).split()) / 220))
+
+    @property
+    def excerpt(self) -> str:
+        if self.subtitle:
+            return self.subtitle
+        for para in _plain(self.body).split("\n\n"):
+            para = " ".join(para.split())
+            if para:
+                return para if len(para) <= 200 else para[:197].rsplit(" ", 1)[0] + "…"
+        return ""
