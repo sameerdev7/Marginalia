@@ -15,6 +15,9 @@ from database import get_db
 password_hash = PasswordHash.recommended()
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/users/token")
+# Same scheme, but a missing header yields None instead of a 401 — for public
+# routes that show a bit more to the signed-in owner (e.g. their own drafts).
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="api/users/token", auto_error=False)
 
 
 def hash_password(password: str) -> str:

@@ -24,3 +24,6 @@ docs/
 
 # frontend — its own repo, nested here on disk, not tracked by this one
 marginalia-web/
+
+# user-uploaded files
+uploads/
