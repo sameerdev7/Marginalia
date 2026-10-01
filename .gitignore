@@ -27,3 +27,19 @@ marginalia-web/
 
 # user-uploaded files
 uploads/
+
+# tooling caches and editor/OS noise
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+nohup.out
+*.log
+.DS_Store
+.idea/
+.vscode/
+.claude/settings.local.json
+
+# env variants (keep an .env.example if you add one)
+.env.*
+!.env.example
