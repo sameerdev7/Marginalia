@@ -43,3 +43,20 @@ nohup.out
 # env variants (keep an .env.example if you add one)
 .env.*
 !.env.example
+
+# editor / OS / tooling noise
+.DS_Store
+.idea/
+.vscode/
+*.log
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.claude/settings.local.json
+
+# local database variants and journals
+*.sqlite3
+*.db-journal
+.env.*
+!.env.example
